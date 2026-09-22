@@ -8,16 +8,24 @@ DB_PATH = Path("groups.db")
 ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "admin123")
 
 APPLICATIONS = [
-    "Smart Waste Sorting Assistant",
     "Mood-Based Music / Activity Recommender",
     "Personalized Study Assistant",
     "Food Image & Healthy Choice Assistant",
-    "Accessible Product Selector",
-    "Campus Accessibility Assistant",
     "Gesture-Controlled Interactive Application",
     "Fashion / Outfit Recommendation Tool",
     "AI Learning Game",
     "Product Preference Predictor",
+    "AI-Powered Campus Navigation Assistant",
+    "Smart Canteen Food Recommendation System",
+    "AI Room / Workspace Designer",
+    "Personal Safety & Emergency Assistant",
+    "AI Travel / Trip Planner",
+    "Smart Plant Care Assistant",
+    "AI-Powered Gift Recommendation Tool",
+    "AI Movie / Series Recommendation Assistant",
+    "AI Meme Generator / Caption Assistant",
+    "AI Excuse Generator for Students",
+    "Others — Enter Your Own Project"
 ]
 
 st.set_page_config(page_title="AI Project Group Formation", page_icon="👥", layout="wide")
@@ -28,7 +36,7 @@ def get_conn():
         CREATE TABLE IF NOT EXISTS groups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             group_name TEXT UNIQUE NOT NULL,
-            application TEXT,
+            application TEXT UNIQUE NOT NULL,
             created_at TEXT NOT NULL
         )
     """)
@@ -43,6 +51,10 @@ def get_conn():
             UNIQUE(group_id, member_no),
             FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE
         )
+    """)
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_application
+        ON groups(application COLLATE NOCASE)
     """)
     conn.commit()
     return conn
@@ -92,6 +104,8 @@ def save_group(group_name, application, members):
         conn.rollback()
         if "groups.group_name" in str(e):
             return False, "That group name is already registered."
+        if "idx_unique_application" in str(e):
+            return False, "That project has already been selected by another group."
         return False, "A student or group entry already exists."
     finally:
         conn.close()
@@ -115,7 +129,24 @@ with tab1:
 
     with st.form("group_form", clear_on_submit=False):
         group_name = st.text_input("Group Name *", placeholder="e.g., AI Innovators")
-        application = st.selectbox("Project Application *", ["— Select an application —"] + APPLICATIONS)
+        application_choice = st.selectbox(
+            "Project Application *",
+            ["— Select an application —"] + APPLICATIONS
+        )
+        
+        custom_application = ""
+        
+        if application_choice == "Others — Enter Your Own Project":
+            custom_application = st.text_input(
+                "Enter Your Project Title *",
+                placeholder="e.g., AI-Based Classroom Seat Recommendation System"
+            )
+        
+        application = (
+            custom_application.strip()
+            if application_choice == "Others — Enter Your Own Project"
+            else application_choice
+        )
 
         st.markdown("### Member Details")
         members = []
@@ -134,8 +165,28 @@ with tab1:
         errors = []
         if not group_name.strip():
             errors.append("Enter a group name.")
-        if application == "— Select an application —":
-            errors.append("Select a project application.")
+        if application_choice == "— Select an application —":
+            errors.append("Select a project application.")        
+        elif application_choice == "Others — Enter Your Own Project" and not custom_application.strip():
+            errors.append("Enter your project title.")
+
+        if application.strip():
+            existing_data = get_data()
+        
+            if not existing_data.empty:
+                existing_projects = set(
+                    existing_data["application"]
+                    .dropna()
+                    .astype(str)
+                    .str.strip()
+                    .str.lower()
+                )
+        
+                if application.strip().lower() in existing_projects:
+                    errors.append(
+                        f"The project '{application}' has already been selected by another group. "
+                        "Please choose a different project."
+                    )
 
         seen_regs, seen_names = set(), set()
         existing_regs, existing_names = registered_students()
