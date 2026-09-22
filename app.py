@@ -110,14 +110,13 @@ def save_group(group_name, application, members):
     finally:
         conn.close()
 
-st.title("👥 AI Project Group Formation")
-st.caption("Digital Fluency • 1st Year ID + PD • 4 students per group")
+st.title("👥 Digital Fluency Assignment: Group Formation")
+st.caption("1st sem ID + PD • 3/4 students per group")
 
 with st.sidebar:
     st.header("Project Settings")
-    st.info("Each group must contain exactly 4 students.")
+    st.info("Each group must contain exactly 3 or 4 students.")
     st.write("**Programmes:** ID / PD")
-    st.write("**Target groups:** 10")
     st.divider()
     st.write("Faculty/Admin access is available from the **Admin Dashboard** tab.")
 
@@ -125,7 +124,7 @@ tab1, tab2 = st.tabs(["📝 Register Group", "📊 Admin Dashboard"])
 
 with tab1:
     st.subheader("Register your project group")
-    st.write("Enter the group name and details of all four members. Each registration number can be used only once.")
+    st.write("Enter the group name and details of all four members.")
 
     with st.form("group_form", clear_on_submit=False):
         group_name = st.text_input("Group Name *", placeholder="e.g., AI Innovators")
@@ -149,9 +148,14 @@ with tab1:
         )
 
         st.markdown("### Member Details")
+        group_size = st.radio(
+            "Number of Students in the Group *",
+            [3, 4],
+            horizontal = True
+        )
         members = []
         cols = st.columns(2)
-        for i in range(4):
+        for i in range(group_size):
             with cols[i % 2]:
                 st.markdown(f"**Member {i+1}**")
                 name = st.text_input("Name *", key=f"name_{i}", placeholder="Full name")
@@ -224,7 +228,8 @@ with tab1:
             if ok:
                 st.success("🎉 Group registered successfully!")
                 st.balloons()
-                st.info(f"**{group_name}** has been registered for **{application}**.")
+                st.info(f"**{group_name}** has been registered with **{len(members)} students** "
+                        f"for **{application}**.")
             else:
                 st.error(msg)
 
@@ -237,9 +242,9 @@ with tab2:
         student_count = 0 if df.empty else len(df)
 
         c1, c2, c3 = st.columns(3)
-        c1.metric("Groups Registered", group_count, f"{max(0, 10-group_count)} remaining")
-        c2.metric("Students Registered", student_count, f"{max(0, 40-student_count)} remaining")
-        c3.metric("Project Applications", len(APPLICATIONS))
+        c1.metric("Groups Registered", group_count)
+        c2.metric("Students Registered", student_count)
+        c3.metric("Project Available", len(APPLICATIONS) - 1)
 
         if not df.empty:
             st.markdown("### Registered Groups")
