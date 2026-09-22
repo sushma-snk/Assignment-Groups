@@ -357,10 +357,9 @@ with tab2:
         group_count = 0 if df.empty else df["id"].nunique()
         student_count = 0 if df.empty else len(df)
 
-        c1, c2, c3 = st.columns(3)
+        c1, c2 = st.columns(3)
         c1.metric("Groups Registered", group_count)
         c2.metric("Students Registered", student_count)
-        c3.metric("Project Available", len(APPLICATIONS) - 1)
 
         if not df.empty:
             st.markdown("### Registered Groups")
