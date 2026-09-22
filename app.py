@@ -28,7 +28,7 @@ APPLICATIONS = [
     "Others — Enter Your Own Project"
 ]
 
-st.set_page_config(page_title="AI Project Group Formation", page_icon="👥", layout="wide")
+st.set_page_config(page_title="Assignment Group Formation", page_icon="👥", layout="wide")
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
