@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 DB_PATH = Path("groups.db")
-ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "admin123")
+ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "Sushma2096")
 
 APPLICATIONS = [
     "Mood-Based Music / Activity Recommender",
