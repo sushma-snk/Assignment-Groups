@@ -124,59 +124,116 @@ tab1, tab2 = st.tabs(["📝 Register Group", "📊 Admin Dashboard"])
 
 with tab1:
     st.subheader("Register your project group")
-    st.write("Enter the group name and details of all four members.")
+    st.write(
+        "Enter the group name and details of all group members. "
+        "Each group must contain 3 or 4 students."
+    )
+    group_name = st.text_input(
+        "Group Name *",
+        placeholder="e.g., AI Innovators",
+        key="group_name"
+    )
+    # ---------------------------------------------------------
+    # PROJECT SELECTION - OUTSIDE FORM
+    # This updates immediately when the student selects an option
+    # ---------------------------------------------------------
+    application_choice = st.selectbox(
+        "Project Application *",
+        ["— Select an application —"] + APPLICATIONS,
+        key="application_choice"
+    )
 
+    custom_application = ""
+
+    if application_choice == "Others — Enter Your Own Project":
+        custom_application = st.text_input(
+            "Enter Your Project Title *",
+            placeholder="e.g., AI-Based Classroom Seat Recommendation System",
+            key="custom_application"
+        )
+
+    application = (
+        custom_application.strip()
+        if application_choice == "Others — Enter Your Own Project"
+        else application_choice
+    )
+
+    # ---------------------------------------------------------
+    # GROUP SIZE - OUTSIDE FORM
+    # This updates immediately when 3 or 4 is selected
+    # ---------------------------------------------------------
+    group_size = st.radio(
+        "Number of Students in the Group *",
+        [3, 4],
+        horizontal=True,
+        key="group_size"
+    )
+
+    st.markdown("### Member Details")
+
+    # ---------------------------------------------------------
+    # FORM - STUDENT DETAILS + SUBMIT
+    # ---------------------------------------------------------
     with st.form("group_form", clear_on_submit=False):
-        group_name = st.text_input("Group Name *", placeholder="e.g., AI Innovators")
-        application_choice = st.selectbox(
-            "Project Application *",
-            ["— Select an application —"] + APPLICATIONS
-        )
-        
-        custom_application = ""
-        
-        if application_choice == "Others — Enter Your Own Project":
-            custom_application = st.text_input(
-                "Enter Your Project Title *",
-                placeholder="e.g., AI-Based Classroom Seat Recommendation System"
-            )
-        
-        application = (
-            custom_application.strip()
-            if application_choice == "Others — Enter Your Own Project"
-            else application_choice
-        )
 
-        st.markdown("### Member Details")
-        group_size = st.radio(
-            "Number of Students in the Group *",
-            [3, 4],
-            horizontal = True
-        )
         members = []
         cols = st.columns(2)
+
         for i in range(group_size):
             with cols[i % 2]:
                 st.markdown(f"**Member {i+1}**")
-                name = st.text_input("Name *", key=f"name_{i}", placeholder="Full name")
-                reg = st.text_input("Registration No. *", key=f"reg_{i}", placeholder="Registration number")
-                programme = st.selectbox("Programme *", ["ID", "PD"], key=f"prog_{i}")
-                members.append({"name": name, "reg_no": reg, "programme": programme})
 
-        submitted = st.form_submit_button("✅ Submit Group", use_container_width=True)
+                name = st.text_input(
+                    "Name *",
+                    key=f"name_{i}",
+                    placeholder="Full name"
+                )
 
+                reg = st.text_input(
+                    "Registration No. *",
+                    key=f"reg_{i}",
+                    placeholder="Registration number"
+                )
+
+                programme = st.selectbox(
+                    "Programme *",
+                    ["ID", "PD"],
+                    key=f"prog_{i}"
+                )
+
+                members.append({
+                    "name": name,
+                    "reg_no": reg,
+                    "programme": programme
+                })
+
+        submitted = st.form_submit_button(
+            "✅ Submit Group",
+            use_container_width=True
+        )
+
+    # ---------------------------------------------------------
+    # VALIDATION
+    # ---------------------------------------------------------
     if submitted:
         errors = []
+
         if not group_name.strip():
             errors.append("Enter a group name.")
+
         if application_choice == "— Select an application —":
-            errors.append("Select a project application.")        
-        elif application_choice == "Others — Enter Your Own Project" and not custom_application.strip():
+            errors.append("Select a project application.")
+
+        elif (
+            application_choice == "Others — Enter Your Own Project"
+            and not custom_application.strip()
+        ):
             errors.append("Enter your project title.")
 
+        # Check whether the selected project is already registered
         if application.strip():
             existing_data = get_data()
-        
+
             if not existing_data.empty:
                 existing_projects = set(
                     existing_data["application"]
@@ -185,51 +242,110 @@ with tab1:
                     .str.strip()
                     .str.lower()
                 )
-        
+
                 if application.strip().lower() in existing_projects:
                     errors.append(
-                        f"The project '{application}' has already been selected by another group. "
-                        "Please choose a different project."
+                        f"The project '{application}' has already been "
+                        "selected by another group. Please choose a "
+                        "different project."
                     )
 
-        seen_regs, seen_names = set(), set()
+        seen_regs = set()
+        seen_names = set()
+
         existing_regs, existing_names = registered_students()
 
         for i, m in enumerate(members, 1):
+
             if not m["name"].strip():
-                errors.append(f"Enter the name for Member {i}.")
+                errors.append(
+                    f"Enter the name for Member {i}."
+                )
+
             if not m["reg_no"].strip():
-                errors.append(f"Enter the registration number for Member {i}.")
+                errors.append(
+                    f"Enter the registration number for Member {i}."
+                )
+
             reg_key = m["reg_no"].strip().lower()
             name_key = m["name"].strip().lower()
+
+            # Duplicate registration number inside current group
             if reg_key:
                 if reg_key in seen_regs:
-                    errors.append(f"Duplicate registration number inside the group: {m['reg_no']}.")
+                    errors.append(
+                        f"Duplicate registration number inside "
+                        f"the group: {m['reg_no']}."
+                    )
+
                 seen_regs.add(reg_key)
+
+                # Already registered in another group
                 if reg_key in existing_regs:
-                    errors.append(f"Registration number already registered: {m['reg_no']}.")
+                    errors.append(
+                        f"Registration number already registered: "
+                        f"{m['reg_no']}."
+                    )
+
+            # Duplicate name inside current group
             if name_key:
                 if name_key in seen_names:
-                    errors.append(f"Duplicate student name inside the group: {m['name']}.")
+                    errors.append(
+                        f"Duplicate student name inside the group: "
+                        f"{m['name']}."
+                    )
+
                 seen_names.add(name_key)
+
+                # Already registered in another group
                 if name_key in existing_names:
-                    errors.append(f"Student name already registered: {m['name']}.")
+                    errors.append(
+                        f"Student name already registered: "
+                        f"{m['name']}."
+                    )
 
-        if group_name.strip().lower() in set(
-            get_data()["group_name"].str.strip().str.lower()
-        ) if not get_data().empty else False:
-            errors.append("That group name is already registered.")
+        # Check duplicate group name
+        existing_data = get_data()
 
+        if not existing_data.empty:
+            existing_group_names = set(
+                existing_data["group_name"]
+                .astype(str)
+                .str.strip()
+                .str.lower()
+            )
+
+            if group_name.strip().lower() in existing_group_names:
+                errors.append(
+                    "That group name is already registered."
+                )
+
+        # -----------------------------------------------------
+        # SHOW ERRORS / SAVE
+        # -----------------------------------------------------
         if errors:
             for e in errors:
                 st.error(e)
+
         else:
-            ok, msg = save_group(group_name, application, members)
+            ok, msg = save_group(
+                group_name,
+                application,
+                members
+            )
+
             if ok:
-                st.success("🎉 Group registered successfully!")
+                st.success(
+                    "🎉 Group registered successfully!"
+                )
                 st.balloons()
-                st.info(f"**{group_name}** has been registered with **{len(members)} students** "
-                        f"for **{application}**.")
+
+                st.info(
+                    f"**{group_name}** has been registered with "
+                    f"**{len(members)} students** for "
+                    f"**{application}**."
+                )
+
             else:
                 st.error(msg)
 
