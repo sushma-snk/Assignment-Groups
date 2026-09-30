@@ -1,11 +1,425 @@
+# import streamlit as st
+# import sqlite3
+# import pandas as pd
+# from pathlib import Path
+# from datetime import datetime
+
+# DB_PATH = Path("groups.db")
+# ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "Sushma2096")
+
+# APPLICATIONS = [
+#     "Mood-Based Music / Activity Recommender",
+#     "Personalized Study Assistant",
+#     "Food Image & Healthy Choice Assistant",
+#     "Gesture-Controlled Interactive Application",
+#     "Fashion / Outfit Recommendation Tool",
+#     "AI Learning Game",
+#     "Product Preference Predictor",
+#     "AI-Powered Campus Navigation Assistant",
+#     "Smart Canteen Food Recommendation System",
+#     "AI Room / Workspace Designer",
+#     "Personal Safety & Emergency Assistant",
+#     "AI Travel / Trip Planner",
+#     "Smart Plant Care Assistant",
+#     "AI-Powered Gift Recommendation Tool",
+#     "AI Movie / Series Recommendation Assistant",
+#     "AI Meme Generator / Caption Assistant",
+#     "AI Excuse Generator for Students",
+#     "Others — Enter Your Own Project"
+# ]
+
+# st.set_page_config(page_title="Assignment Group Formation", page_icon="👥", layout="wide")
+
+# def get_conn():
+#     conn = sqlite3.connect(DB_PATH)
+#     conn.execute("""
+#         CREATE TABLE IF NOT EXISTS groups (
+#             id INTEGER PRIMARY KEY AUTOINCREMENT,
+#             group_name TEXT UNIQUE NOT NULL,
+#             application TEXT UNIQUE NOT NULL,
+#             created_at TEXT NOT NULL
+#         )
+#     """)
+#     conn.execute("""
+#         CREATE TABLE IF NOT EXISTS members (
+#             id INTEGER PRIMARY KEY AUTOINCREMENT,
+#             group_id INTEGER NOT NULL,
+#             member_no INTEGER NOT NULL,
+#             name TEXT NOT NULL,
+#             reg_no TEXT NOT NULL,
+#             programme TEXT NOT NULL,
+#             UNIQUE(group_id, member_no),
+#             FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE
+#         )
+#     """)
+#     conn.execute("""
+#         CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_application
+#         ON groups(application COLLATE NOCASE)
+#     """)
+#     conn.commit()
+#     return conn
+
+# def get_data():
+#     conn = get_conn()
+#     q = """
+#     SELECT g.id, g.group_name, g.application, g.created_at,
+#            m.member_no, m.name, m.reg_no, m.programme
+#     FROM groups g JOIN members m ON g.id = m.group_id
+#     ORDER BY g.id, m.member_no
+#     """
+#     df = pd.read_sql_query(q, conn)
+#     conn.close()
+#     return df
+
+# def registered_students():
+#     df = get_data()
+#     if df.empty:
+#         return set(), set()
+#     return set(df["reg_no"].str.strip().str.lower()), set(df["name"].str.strip().str.lower())
+
+# def delete_group(group_id):
+#     conn = get_conn()
+#     conn.execute("DELETE FROM members WHERE group_id=?", (group_id,))
+#     conn.execute("DELETE FROM groups WHERE id=?", (group_id,))
+#     conn.commit()
+#     conn.close()
+
+# def save_group(group_name, application, members):
+#     conn = get_conn()
+#     try:
+#         cur = conn.cursor()
+#         cur.execute(
+#             "INSERT INTO groups(group_name, application, created_at) VALUES(?,?,?)",
+#             (group_name.strip(), application, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+#         )
+#         gid = cur.lastrowid
+#         for i, member in enumerate(members, 1):
+#             cur.execute(
+#                 "INSERT INTO members(group_id, member_no, name, reg_no, programme) VALUES(?,?,?,?,?)",
+#                 (gid, i, member["name"].strip(), member["reg_no"].strip(), member["programme"])
+#             )
+#         conn.commit()
+#         return True, ""
+#     except sqlite3.IntegrityError as e:
+#         conn.rollback()
+#         if "groups.group_name" in str(e):
+#             return False, "That group name is already registered."
+#         if "idx_unique_application" in str(e):
+#             return False, "That project has already been selected by another group."
+#         return False, "A student or group entry already exists."
+#     finally:
+#         conn.close()
+
+# st.title("👥 Digital Fluency Assignment: Group Formation")
+# st.caption("1st sem ID + PD • 3/4 students per group")
+
+# with st.sidebar:
+#     st.header("Project Settings")
+#     st.info("Each group must contain exactly 3 or 4 students.")
+#     st.write("**Programmes:** ID / PD")
+#     st.divider()
+#     st.write("Faculty/Admin access is available from the **Admin Dashboard** tab.")
+
+# tab1, tab2 = st.tabs(["📝 Register Group", "📊 Admin Dashboard"])
+
+# with tab1:
+#     st.subheader("Register your project group")
+#     st.write(
+#         "Enter the group name and details of all group members. "
+#         "Each group must contain 3 or 4 students."
+#     )
+#     group_name = st.text_input(
+#         "Group Name *",
+#         placeholder="e.g., AI Innovators",
+#         key="group_name"
+#     )
+#     # ---------------------------------------------------------
+#     # PROJECT SELECTION - OUTSIDE FORM
+#     # This updates immediately when the student selects an option
+#     # ---------------------------------------------------------
+#     application_choice = st.selectbox(
+#         "Project Application *",
+#         ["— Select an application —"] + APPLICATIONS,
+#         key="application_choice"
+#     )
+
+#     custom_application = ""
+
+#     if application_choice == "Others — Enter Your Own Project":
+#         custom_application = st.text_input(
+#             "Enter Your Project Title *",
+#             placeholder="e.g., AI-Based Classroom Seat Recommendation System",
+#             key="custom_application"
+#         )
+
+#     application = (
+#         custom_application.strip()
+#         if application_choice == "Others — Enter Your Own Project"
+#         else application_choice
+#     )
+
+#     # ---------------------------------------------------------
+#     # GROUP SIZE - OUTSIDE FORM
+#     # This updates immediately when 3 or 4 is selected
+#     # ---------------------------------------------------------
+#     group_size = st.radio(
+#         "Number of Students in the Group *",
+#         [3, 4],
+#         horizontal=True,
+#         key="group_size"
+#     )
+
+#     st.markdown("### Member Details")
+
+#     # ---------------------------------------------------------
+#     # FORM - STUDENT DETAILS + SUBMIT
+#     # ---------------------------------------------------------
+#     with st.form("group_form", clear_on_submit=False):
+
+#         members = []
+#         cols = st.columns(2)
+
+#         for i in range(group_size):
+#             with cols[i % 2]:
+#                 st.markdown(f"**Member {i+1}**")
+
+#                 name = st.text_input(
+#                     "Name *",
+#                     key=f"name_{i}",
+#                     placeholder="Full name"
+#                 )
+
+#                 reg = st.text_input(
+#                     "Registration No. *",
+#                     key=f"reg_{i}",
+#                     placeholder="Registration number"
+#                 )
+
+#                 programme = st.selectbox(
+#                     "Programme *",
+#                     ["ID", "PD"],
+#                     key=f"prog_{i}"
+#                 )
+
+#                 members.append({
+#                     "name": name,
+#                     "reg_no": reg,
+#                     "programme": programme
+#                 })
+
+#         submitted = st.form_submit_button(
+#             "✅ Submit Group",
+#             use_container_width=True
+#         )
+
+#     # ---------------------------------------------------------
+#     # VALIDATION
+#     # ---------------------------------------------------------
+#     if submitted:
+#         errors = []
+
+#         if not group_name.strip():
+#             errors.append("Enter a group name.")
+
+#         if application_choice == "— Select an application —":
+#             errors.append("Select a project application.")
+
+#         elif (
+#             application_choice == "Others — Enter Your Own Project"
+#             and not custom_application.strip()
+#         ):
+#             errors.append("Enter your project title.")
+
+#         # Check whether the selected project is already registered
+#         if application.strip():
+#             existing_data = get_data()
+
+#             if not existing_data.empty:
+#                 existing_projects = set(
+#                     existing_data["application"]
+#                     .dropna()
+#                     .astype(str)
+#                     .str.strip()
+#                     .str.lower()
+#                 )
+
+#                 if application.strip().lower() in existing_projects:
+#                     errors.append(
+#                         f"The project '{application}' has already been "
+#                         "selected by another group. Please choose a "
+#                         "different project."
+#                     )
+
+#         seen_regs = set()
+#         seen_names = set()
+
+#         existing_regs, existing_names = registered_students()
+
+#         for i, m in enumerate(members, 1):
+
+#             if not m["name"].strip():
+#                 errors.append(
+#                     f"Enter the name for Member {i}."
+#                 )
+
+#             if not m["reg_no"].strip():
+#                 errors.append(
+#                     f"Enter the registration number for Member {i}."
+#                 )
+
+#             reg_key = m["reg_no"].strip().lower()
+#             name_key = m["name"].strip().lower()
+
+#             # Duplicate registration number inside current group
+#             if reg_key:
+#                 if reg_key in seen_regs:
+#                     errors.append(
+#                         f"Duplicate registration number inside "
+#                         f"the group: {m['reg_no']}."
+#                     )
+
+#                 seen_regs.add(reg_key)
+
+#                 # Already registered in another group
+#                 if reg_key in existing_regs:
+#                     errors.append(
+#                         f"Registration number already registered: "
+#                         f"{m['reg_no']}."
+#                     )
+
+#             # Duplicate name inside current group
+#             if name_key:
+#                 if name_key in seen_names:
+#                     errors.append(
+#                         f"Duplicate student name inside the group: "
+#                         f"{m['name']}."
+#                     )
+
+#                 seen_names.add(name_key)
+
+#                 # Already registered in another group
+#                 if name_key in existing_names:
+#                     errors.append(
+#                         f"Student name already registered: "
+#                         f"{m['name']}."
+#                     )
+
+#         # Check duplicate group name
+#         existing_data = get_data()
+
+#         if not existing_data.empty:
+#             existing_group_names = set(
+#                 existing_data["group_name"]
+#                 .astype(str)
+#                 .str.strip()
+#                 .str.lower()
+#             )
+
+#             if group_name.strip().lower() in existing_group_names:
+#                 errors.append(
+#                     "That group name is already registered."
+#                 )
+
+#         # -----------------------------------------------------
+#         # SHOW ERRORS / SAVE
+#         # -----------------------------------------------------
+#         if errors:
+#             for e in errors:
+#                 st.error(e)
+
+#         else:
+#             ok, msg = save_group(
+#                 group_name,
+#                 application,
+#                 members
+#             )
+
+#             if ok:
+#                 st.success(
+#                     "🎉 Group registered successfully!"
+#                 )
+#                 st.balloons()
+
+#                 st.info(
+#                     f"**{group_name}** has been registered with "
+#                     f"**{len(members)} students** for "
+#                     f"**{application}**."
+#                 )
+
+#             else:
+#                 st.error(msg)
+
+# with tab2:
+#     st.subheader("Faculty / Admin Dashboard")
+#     password = st.text_input("Admin password", type="password", key="admin_password")
+#     if password == ADMIN_PASSWORD:
+#         df = get_data()
+#         group_count = 0 if df.empty else df["id"].nunique()
+#         student_count = 0 if df.empty else len(df)
+
+#         c1, c2 = st.columns(2)
+#         c1.metric("Groups Registered", group_count)
+#         c2.metric("Students Registered", student_count)
+
+#         if not df.empty:
+#             st.markdown("### Registered Groups")
+#             summary = (
+#                 df.groupby(["id", "group_name", "application"], as_index=False)
+#                 .agg(Members=("name", lambda x: ", ".join(x)))
+#                 .rename(columns={"group_name": "Group", "application": "Application", "Members": "Members"})
+#             )
+#             st.dataframe(summary[["Group", "Application", "Members"]], use_container_width=True, hide_index=True)
+
+#             st.markdown("### Detailed Student List")
+#             detail = df[["group_name", "application", "member_no", "name", "reg_no", "programme"]].copy()
+#             detail.columns = ["Group", "Application", "Member", "Name", "Registration No.", "Programme"]
+#             st.dataframe(detail, use_container_width=True, hide_index=True)
+
+#             csv = detail.to_csv(index=False).encode("utf-8")
+#             st.download_button("⬇️ Download CSV", csv, "project_groups.csv", "text/csv")
+
+#             st.markdown("### Delete a Group")
+#             group_options = dict(zip(df["group_name"].unique(), df.drop_duplicates("group_name")["id"]))
+#             selected = st.selectbox("Select group to delete", ["— Select —"] + list(group_options.keys()))
+#             confirm = st.checkbox("I confirm that I want to delete this group.")
+#             if selected != "— Select —" and confirm:
+#                 if st.button("🗑️ Delete Selected Group", type="secondary"):
+#                     delete_group(group_options[selected])
+#                     st.success(f"{selected} deleted.")
+#                     st.rerun()
+#         else:
+#             st.info("No groups have been registered yet.")
+#     elif password:
+#         st.error("Incorrect password.")
+
+# st.divider()
+# st.caption("Faculty can change the admin password in Streamlit secrets before deployment.")
+
+
+
 import streamlit as st
 import sqlite3
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
+
+# =========================================================
+# SETTINGS
+# =========================================================
+
 DB_PATH = Path("groups.db")
-ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "Sushma2096")
+EXCEL_PATH = Path("project_groups.xlsx")
+
+ADMIN_PASSWORD = st.secrets.get(
+    "ADMIN_PASSWORD",
+    "Sushma2096"
+)
+
+
+# =========================================================
+# PROJECT APPLICATIONS
+# =========================================================
 
 APPLICATIONS = [
     "Mood-Based Music / Activity Recommender",
@@ -28,10 +442,26 @@ APPLICATIONS = [
     "Others — Enter Your Own Project"
 ]
 
-st.set_page_config(page_title="Assignment Group Formation", page_icon="👥", layout="wide")
+
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
+
+st.set_page_config(
+    page_title="Assignment Group Formation",
+    page_icon="👥",
+    layout="wide"
+)
+
+
+# =========================================================
+# DATABASE CONNECTION
+# =========================================================
 
 def get_conn():
+
     conn = sqlite3.connect(DB_PATH)
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS groups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,6 +470,7 @@ def get_conn():
             created_at TEXT NOT NULL
         )
     """)
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS members (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,120 +479,426 @@ def get_conn():
             name TEXT NOT NULL,
             reg_no TEXT NOT NULL,
             programme TEXT NOT NULL,
+
             UNIQUE(group_id, member_no),
-            FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE
+
+            FOREIGN KEY(group_id)
+            REFERENCES groups(id)
+            ON DELETE CASCADE
         )
     """)
+
     conn.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_application
         ON groups(application COLLATE NOCASE)
     """)
+
     conn.commit()
+
     return conn
 
+
+# =========================================================
+# GET ALL REGISTERED DATA
+# =========================================================
+
 def get_data():
+
     conn = get_conn()
-    q = """
-    SELECT g.id, g.group_name, g.application, g.created_at,
-           m.member_no, m.name, m.reg_no, m.programme
-    FROM groups g JOIN members m ON g.id = m.group_id
-    ORDER BY g.id, m.member_no
+
+    query = """
+        SELECT
+            g.id,
+            g.group_name,
+            g.application,
+            g.created_at,
+            m.member_no,
+            m.name,
+            m.reg_no,
+            m.programme
+
+        FROM groups g
+
+        JOIN members m
+        ON g.id = m.group_id
+
+        ORDER BY
+            g.id,
+            m.member_no
     """
-    df = pd.read_sql_query(q, conn)
+
+    df = pd.read_sql_query(query, conn)
+
     conn.close()
+
     return df
 
+
+# =========================================================
+# REGISTERED STUDENTS
+# =========================================================
+
 def registered_students():
+
     df = get_data()
+
     if df.empty:
         return set(), set()
-    return set(df["reg_no"].str.strip().str.lower()), set(df["name"].str.strip().str.lower())
+
+    registered_regs = set(
+        df["reg_no"]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+    )
+
+    registered_names = set(
+        df["name"]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+    )
+
+    return registered_regs, registered_names
+
+
+# =========================================================
+# DELETE GROUP
+# =========================================================
 
 def delete_group(group_id):
+
     conn = get_conn()
-    conn.execute("DELETE FROM members WHERE group_id=?", (group_id,))
-    conn.execute("DELETE FROM groups WHERE id=?", (group_id,))
+
+    conn.execute(
+        "DELETE FROM members WHERE group_id=?",
+        (group_id,)
+    )
+
+    conn.execute(
+        "DELETE FROM groups WHERE id=?",
+        (group_id,)
+    )
+
     conn.commit()
+
     conn.close()
 
-def save_group(group_name, application, members):
-    conn = get_conn()
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO groups(group_name, application, created_at) VALUES(?,?,?)",
-            (group_name.strip(), application, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        )
-        gid = cur.lastrowid
-        for i, member in enumerate(members, 1):
-            cur.execute(
-                "INSERT INTO members(group_id, member_no, name, reg_no, programme) VALUES(?,?,?,?,?)",
-                (gid, i, member["name"].strip(), member["reg_no"].strip(), member["programme"])
+
+# =========================================================
+# SAVE DATA TO EXCEL
+# =========================================================
+
+def save_to_excel(
+    group_name,
+    application,
+    members,
+    timestamp
+):
+
+    rows = []
+
+    for i, member in enumerate(members, 1):
+
+        rows.append({
+            "Timestamp": timestamp,
+            "Group": group_name.strip(),
+            "Application": application,
+            "Member": i,
+            "Name": member["name"].strip(),
+            "Registration No.": member["reg_no"].strip(),
+            "Programme": member["programme"]
+        })
+
+    new_df = pd.DataFrame(rows)
+
+    # -----------------------------------------------------
+    # If Excel already exists, append to it
+    # -----------------------------------------------------
+
+    if EXCEL_PATH.exists():
+
+        try:
+
+            old_df = pd.read_excel(
+                EXCEL_PATH,
+                engine="openpyxl"
             )
+
+            final_df = pd.concat(
+                [old_df, new_df],
+                ignore_index=True
+            )
+
+        except Exception:
+
+            final_df = new_df
+
+    else:
+
+        final_df = new_df
+
+    # -----------------------------------------------------
+    # Save updated Excel file
+    # -----------------------------------------------------
+
+    final_df.to_excel(
+        EXCEL_PATH,
+        index=False,
+        engine="openpyxl"
+    )
+
+
+# =========================================================
+# SAVE GROUP
+# =========================================================
+
+def save_group(
+    group_name,
+    application,
+    members
+):
+
+    conn = get_conn()
+
+    try:
+
+        cur = conn.cursor()
+
+        # -------------------------------------------------
+        # Generate ONE timestamp for the entire group
+        # -------------------------------------------------
+
+        timestamp = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        # -------------------------------------------------
+        # Insert group
+        # -------------------------------------------------
+
+        cur.execute(
+            """
+            INSERT INTO groups(
+                group_name,
+                application,
+                created_at
+            )
+            VALUES(?,?,?)
+            """,
+            (
+                group_name.strip(),
+                application,
+                timestamp
+            )
+        )
+
+        group_id = cur.lastrowid
+
+        # -------------------------------------------------
+        # Insert members
+        # -------------------------------------------------
+
+        for i, member in enumerate(members, 1):
+
+            cur.execute(
+                """
+                INSERT INTO members(
+                    group_id,
+                    member_no,
+                    name,
+                    reg_no,
+                    programme
+                )
+                VALUES(?,?,?,?,?)
+                """,
+                (
+                    group_id,
+                    i,
+                    member["name"].strip(),
+                    member["reg_no"].strip(),
+                    member["programme"]
+                )
+            )
+
+        # -------------------------------------------------
+        # Save SQLite transaction
+        # -------------------------------------------------
+
         conn.commit()
+
+        # -------------------------------------------------
+        # Save the same submission to Excel
+        # -------------------------------------------------
+
+        save_to_excel(
+            group_name,
+            application,
+            members,
+            timestamp
+        )
+
         return True, ""
+
     except sqlite3.IntegrityError as e:
+
         conn.rollback()
-        if "groups.group_name" in str(e):
-            return False, "That group name is already registered."
-        if "idx_unique_application" in str(e):
-            return False, "That project has already been selected by another group."
-        return False, "A student or group entry already exists."
+
+        error_message = str(e)
+
+        if "groups.group_name" in error_message:
+
+            return False, (
+                "That group name is already registered."
+            )
+
+        if "idx_unique_application" in error_message:
+
+            return False, (
+                "That project has already been selected "
+                "by another group."
+            )
+
+        return False, (
+            "A student or group entry already exists."
+        )
+
+    except Exception as e:
+
+        conn.rollback()
+
+        return False, (
+            f"Could not save the group: {e}"
+        )
+
     finally:
+
         conn.close()
 
-st.title("👥 Digital Fluency Assignment: Group Formation")
-st.caption("1st sem ID + PD • 3/4 students per group")
+
+# =========================================================
+# APPLICATION TITLE
+# =========================================================
+
+st.title(
+    "👥 Digital Fluency Assignment: Group Formation"
+)
+
+st.caption(
+    "1st sem ID + PD • 3/4 students per group"
+)
+
+
+# =========================================================
+# SIDEBAR
+# =========================================================
 
 with st.sidebar:
-    st.header("Project Settings")
-    st.info("Each group must contain exactly 3 or 4 students.")
-    st.write("**Programmes:** ID / PD")
-    st.divider()
-    st.write("Faculty/Admin access is available from the **Admin Dashboard** tab.")
 
-tab1, tab2 = st.tabs(["📝 Register Group", "📊 Admin Dashboard"])
+    st.header("Project Settings")
+
+    st.info(
+        "Each group must contain exactly "
+        "3 or 4 students."
+    )
+
+    st.write(
+        "**Programmes:** ID / PD"
+    )
+
+    st.divider()
+
+    st.write(
+        "Faculty/Admin access is available "
+        "from the **Admin Dashboard** tab."
+    )
+
+
+# =========================================================
+# TABS
+# =========================================================
+
+tab1, tab2 = st.tabs(
+    [
+        "📝 Register Group",
+        "📊 Admin Dashboard"
+    ]
+)
+
+
+# =========================================================
+# TAB 1 — GROUP REGISTRATION
+# =========================================================
 
 with tab1:
-    st.subheader("Register your project group")
-    st.write(
-        "Enter the group name and details of all group members. "
-        "Each group must contain 3 or 4 students."
+
+    st.subheader(
+        "Register your project group"
     )
+
+    st.write(
+        "Enter the group name and details of all "
+        "group members. Each group must contain "
+        "3 or 4 students."
+    )
+
+    # -----------------------------------------------------
+    # GROUP NAME
+    # -----------------------------------------------------
+
     group_name = st.text_input(
         "Group Name *",
         placeholder="e.g., AI Innovators",
         key="group_name"
     )
-    # ---------------------------------------------------------
-    # PROJECT SELECTION - OUTSIDE FORM
-    # This updates immediately when the student selects an option
-    # ---------------------------------------------------------
+
+    # -----------------------------------------------------
+    # PROJECT APPLICATION
+    # -----------------------------------------------------
+
     application_choice = st.selectbox(
         "Project Application *",
-        ["— Select an application —"] + APPLICATIONS,
+        [
+            "— Select an application —"
+        ] + APPLICATIONS,
         key="application_choice"
     )
 
     custom_application = ""
 
-    if application_choice == "Others — Enter Your Own Project":
+    # -----------------------------------------------------
+    # CUSTOM PROJECT
+    # -----------------------------------------------------
+
+    if (
+        application_choice
+        == "Others — Enter Your Own Project"
+    ):
+
         custom_application = st.text_input(
             "Enter Your Project Title *",
-            placeholder="e.g., AI-Based Classroom Seat Recommendation System",
+            placeholder=(
+                "e.g., AI-Based Classroom Seat "
+                "Recommendation System"
+            ),
             key="custom_application"
         )
 
+    # -----------------------------------------------------
+    # FINAL APPLICATION NAME
+    # -----------------------------------------------------
+
     application = (
         custom_application.strip()
-        if application_choice == "Others — Enter Your Own Project"
+        if application_choice
+        == "Others — Enter Your Own Project"
         else application_choice
     )
 
-    # ---------------------------------------------------------
-    # GROUP SIZE - OUTSIDE FORM
-    # This updates immediately when 3 or 4 is selected
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # GROUP SIZE
+    # -----------------------------------------------------
+
     group_size = st.radio(
         "Number of Students in the Group *",
         [3, 4],
@@ -169,19 +906,30 @@ with tab1:
         key="group_size"
     )
 
-    st.markdown("### Member Details")
+    st.markdown(
+        "### Member Details"
+    )
 
-    # ---------------------------------------------------------
-    # FORM - STUDENT DETAILS + SUBMIT
-    # ---------------------------------------------------------
-    with st.form("group_form", clear_on_submit=False):
+    # =====================================================
+    # FORM
+    # =====================================================
+
+    with st.form(
+        "group_form",
+        clear_on_submit=False
+    ):
 
         members = []
+
         cols = st.columns(2)
 
         for i in range(group_size):
+
             with cols[i % 2]:
-                st.markdown(f"**Member {i+1}**")
+
+                st.markdown(
+                    f"**Member {i + 1}**"
+                )
 
                 name = st.text_input(
                     "Name *",
@@ -212,29 +960,57 @@ with tab1:
             use_container_width=True
         )
 
-    # ---------------------------------------------------------
+    # =====================================================
     # VALIDATION
-    # ---------------------------------------------------------
+    # =====================================================
+
     if submitted:
+
         errors = []
 
-        if not group_name.strip():
-            errors.append("Enter a group name.")
+        # -------------------------------------------------
+        # Group name
+        # -------------------------------------------------
 
-        if application_choice == "— Select an application —":
-            errors.append("Select a project application.")
+        if not group_name.strip():
+
+            errors.append(
+                "Enter a group name."
+            )
+
+        # -------------------------------------------------
+        # Application
+        # -------------------------------------------------
+
+        if (
+            application_choice
+            == "— Select an application —"
+        ):
+
+            errors.append(
+                "Select a project application."
+            )
 
         elif (
-            application_choice == "Others — Enter Your Own Project"
+            application_choice
+            == "Others — Enter Your Own Project"
             and not custom_application.strip()
         ):
-            errors.append("Enter your project title.")
 
-        # Check whether the selected project is already registered
+            errors.append(
+                "Enter your project title."
+            )
+
+        # -------------------------------------------------
+        # Check duplicate project
+        # -------------------------------------------------
+
         if application.strip():
+
             existing_data = get_data()
 
             if not existing_data.empty:
+
                 existing_projects = set(
                     existing_data["application"]
                     .dropna()
@@ -243,71 +1019,131 @@ with tab1:
                     .str.lower()
                 )
 
-                if application.strip().lower() in existing_projects:
+                if (
+                    application.strip().lower()
+                    in existing_projects
+                ):
+
                     errors.append(
-                        f"The project '{application}' has already been "
-                        "selected by another group. Please choose a "
-                        "different project."
+                        f"The project '{application}' "
+                        "has already been selected by "
+                        "another group. Please choose "
+                        "a different project."
                     )
+
+        # -------------------------------------------------
+        # Student duplicate checking
+        # -------------------------------------------------
 
         seen_regs = set()
         seen_names = set()
 
-        existing_regs, existing_names = registered_students()
+        existing_regs, existing_names = (
+            registered_students()
+        )
 
-        for i, m in enumerate(members, 1):
+        for i, member in enumerate(
+            members,
+            1
+        ):
 
-            if not m["name"].strip():
+            # ---------------------------------------------
+            # Name validation
+            # ---------------------------------------------
+
+            if not member["name"].strip():
+
                 errors.append(
                     f"Enter the name for Member {i}."
                 )
 
-            if not m["reg_no"].strip():
+            # ---------------------------------------------
+            # Registration number validation
+            # ---------------------------------------------
+
+            if not member["reg_no"].strip():
+
                 errors.append(
-                    f"Enter the registration number for Member {i}."
+                    "Enter the registration number "
+                    f"for Member {i}."
                 )
 
-            reg_key = m["reg_no"].strip().lower()
-            name_key = m["name"].strip().lower()
+            reg_key = (
+                member["reg_no"]
+                .strip()
+                .lower()
+            )
 
-            # Duplicate registration number inside current group
+            name_key = (
+                member["name"]
+                .strip()
+                .lower()
+            )
+
+            # ---------------------------------------------
+            # Duplicate registration number
+            # inside current group
+            # ---------------------------------------------
+
             if reg_key:
+
                 if reg_key in seen_regs:
+
                     errors.append(
-                        f"Duplicate registration number inside "
-                        f"the group: {m['reg_no']}."
+                        "Duplicate registration number "
+                        "inside the group: "
+                        f"{member['reg_no']}."
                     )
 
                 seen_regs.add(reg_key)
 
+                # -----------------------------------------
                 # Already registered in another group
+                # -----------------------------------------
+
                 if reg_key in existing_regs:
+
                     errors.append(
-                        f"Registration number already registered: "
-                        f"{m['reg_no']}."
+                        "Registration number already "
+                        "registered: "
+                        f"{member['reg_no']}."
                     )
 
-            # Duplicate name inside current group
+            # ---------------------------------------------
+            # Duplicate name
+            # ---------------------------------------------
+
             if name_key:
+
                 if name_key in seen_names:
+
                     errors.append(
-                        f"Duplicate student name inside the group: "
-                        f"{m['name']}."
+                        "Duplicate student name inside "
+                        "the group: "
+                        f"{member['name']}."
                     )
 
                 seen_names.add(name_key)
 
+                # -----------------------------------------
                 # Already registered in another group
+                # -----------------------------------------
+
                 if name_key in existing_names:
+
                     errors.append(
-                        f"Student name already registered: "
-                        f"{m['name']}."
+                        "Student name already registered: "
+                        f"{member['name']}."
                     )
 
-        # Check duplicate group name
+        # -------------------------------------------------
+        # Duplicate group name
+        # -------------------------------------------------
+
         existing_data = get_data()
 
         if not existing_data.empty:
+
             existing_group_names = set(
                 existing_data["group_name"]
                 .astype(str)
@@ -315,19 +1151,31 @@ with tab1:
                 .str.lower()
             )
 
-            if group_name.strip().lower() in existing_group_names:
+            if (
+                group_name.strip().lower()
+                in existing_group_names
+            ):
+
                 errors.append(
                     "That group name is already registered."
                 )
 
-        # -----------------------------------------------------
-        # SHOW ERRORS / SAVE
-        # -----------------------------------------------------
+        # =================================================
+        # SHOW ERRORS
+        # =================================================
+
         if errors:
-            for e in errors:
-                st.error(e)
+
+            for error in errors:
+
+                st.error(error)
+
+        # =================================================
+        # SAVE GROUP
+        # =================================================
 
         else:
+
             ok, msg = save_group(
                 group_name,
                 application,
@@ -335,62 +1183,301 @@ with tab1:
             )
 
             if ok:
+
                 st.success(
                     "🎉 Group registered successfully!"
                 )
+
                 st.balloons()
 
                 st.info(
-                    f"**{group_name}** has been registered with "
-                    f"**{len(members)} students** for "
-                    f"**{application}**."
+                    f"**{group_name}** has been "
+                    f"registered with "
+                    f"**{len(members)} students** "
+                    f"for **{application}**."
+                )
+
+                st.info(
+                    "📊 The registration has also been "
+                    "saved to the Excel record."
                 )
 
             else:
+
                 st.error(msg)
 
+
+# =========================================================
+# TAB 2 — ADMIN DASHBOARD
+# =========================================================
+
 with tab2:
-    st.subheader("Faculty / Admin Dashboard")
-    password = st.text_input("Admin password", type="password", key="admin_password")
+
+    st.subheader(
+        "Faculty / Admin Dashboard"
+    )
+
+    password = st.text_input(
+        "Admin password",
+        type="password",
+        key="admin_password"
+    )
+
+    # =====================================================
+    # ADMIN LOGIN
+    # =====================================================
+
     if password == ADMIN_PASSWORD:
+
         df = get_data()
-        group_count = 0 if df.empty else df["id"].nunique()
-        student_count = 0 if df.empty else len(df)
+
+        # -------------------------------------------------
+        # Statistics
+        # -------------------------------------------------
+
+        group_count = (
+            0
+            if df.empty
+            else df["id"].nunique()
+        )
+
+        student_count = (
+            0
+            if df.empty
+            else len(df)
+        )
 
         c1, c2 = st.columns(2)
-        c1.metric("Groups Registered", group_count)
-        c2.metric("Students Registered", student_count)
+
+        c1.metric(
+            "Groups Registered",
+            group_count
+        )
+
+        c2.metric(
+            "Students Registered",
+            student_count
+        )
+
+        # =================================================
+        # REGISTERED GROUPS
+        # =================================================
 
         if not df.empty:
-            st.markdown("### Registered Groups")
-            summary = (
-                df.groupby(["id", "group_name", "application"], as_index=False)
-                .agg(Members=("name", lambda x: ", ".join(x)))
-                .rename(columns={"group_name": "Group", "application": "Application", "Members": "Members"})
+
+            st.markdown(
+                "### Registered Groups"
             )
-            st.dataframe(summary[["Group", "Application", "Members"]], use_container_width=True, hide_index=True)
 
-            st.markdown("### Detailed Student List")
-            detail = df[["group_name", "application", "member_no", "name", "reg_no", "programme"]].copy()
-            detail.columns = ["Group", "Application", "Member", "Name", "Registration No.", "Programme"]
-            st.dataframe(detail, use_container_width=True, hide_index=True)
+            summary = (
+                df.groupby(
+                    [
+                        "id",
+                        "group_name",
+                        "application",
+                        "created_at"
+                    ],
+                    as_index=False
+                )
+                .agg(
+                    Members=(
+                        "name",
+                        lambda x: ", ".join(x)
+                    )
+                )
+                .rename(
+                    columns={
+                        "group_name": "Group",
+                        "application": "Application",
+                        "created_at": "Timestamp"
+                    }
+                )
+            )
 
-            csv = detail.to_csv(index=False).encode("utf-8")
-            st.download_button("⬇️ Download CSV", csv, "project_groups.csv", "text/csv")
+            st.dataframe(
+                summary[
+                    [
+                        "Group",
+                        "Application",
+                        "Members",
+                        "Timestamp"
+                    ]
+                ],
+                use_container_width=True,
+                hide_index=True
+            )
 
-            st.markdown("### Delete a Group")
-            group_options = dict(zip(df["group_name"].unique(), df.drop_duplicates("group_name")["id"]))
-            selected = st.selectbox("Select group to delete", ["— Select —"] + list(group_options.keys()))
-            confirm = st.checkbox("I confirm that I want to delete this group.")
-            if selected != "— Select —" and confirm:
-                if st.button("🗑️ Delete Selected Group", type="secondary"):
-                    delete_group(group_options[selected])
-                    st.success(f"{selected} deleted.")
+            # =================================================
+            # DETAILED STUDENT LIST
+            # =================================================
+
+            st.markdown(
+                "### Detailed Student List"
+            )
+
+            detail = df[
+                [
+                    "group_name",
+                    "application",
+                    "created_at",
+                    "member_no",
+                    "name",
+                    "reg_no",
+                    "programme"
+                ]
+            ].copy()
+
+            detail.columns = [
+                "Group",
+                "Application",
+                "Timestamp",
+                "Member",
+                "Name",
+                "Registration No.",
+                "Programme"
+            ]
+
+            st.dataframe(
+                detail,
+                use_container_width=True,
+                hide_index=True
+            )
+
+            # =================================================
+            # CSV DOWNLOAD
+            # =================================================
+
+            csv = detail.to_csv(
+                index=False
+            ).encode("utf-8")
+
+            st.download_button(
+                "⬇️ Download CSV",
+                csv,
+                "project_groups.csv",
+                "text/csv",
+                use_container_width=True
+            )
+
+            # =================================================
+            # EXCEL DOWNLOAD
+            # =================================================
+
+            st.markdown(
+                "### Excel Record"
+            )
+
+            if EXCEL_PATH.exists():
+
+                try:
+
+                    with open(
+                        EXCEL_PATH,
+                        "rb"
+                    ) as file:
+
+                        excel_data = file.read()
+
+                    st.download_button(
+                        "⬇️ Download Excel",
+                        excel_data,
+                        "project_groups.xlsx",
+                        (
+                            "application/vnd.openxmlformats-"
+                            "officedocument.spreadsheetml.sheet"
+                        ),
+                        use_container_width=True
+                    )
+
+                    st.success(
+                        "Excel record is available."
+                    )
+
+                except Exception as e:
+
+                    st.error(
+                        f"Unable to read Excel file: {e}"
+                    )
+
+            else:
+
+                st.warning(
+                    "Excel file has not been created yet."
+                )
+
+            # =================================================
+            # DELETE GROUP
+            # =================================================
+
+            st.markdown(
+                "### Delete a Group"
+            )
+
+            group_options = dict(
+                zip(
+                    df["group_name"].unique(),
+                    df.drop_duplicates(
+                        "group_name"
+                    )["id"]
+                )
+            )
+
+            selected = st.selectbox(
+                "Select group to delete",
+                [
+                    "— Select —"
+                ] + list(group_options.keys())
+            )
+
+            confirm = st.checkbox(
+                "I confirm that I want to delete this group."
+            )
+
+            if (
+                selected != "— Select —"
+                and confirm
+            ):
+
+                if st.button(
+                    "🗑️ Delete Selected Group",
+                    type="secondary"
+                ):
+
+                    delete_group(
+                        group_options[selected]
+                    )
+
+                    st.success(
+                        f"{selected} deleted."
+                    )
+
                     st.rerun()
+
         else:
-            st.info("No groups have been registered yet.")
+
+            st.info(
+                "No groups have been registered yet."
+            )
+
     elif password:
-        st.error("Incorrect password.")
+
+        st.error(
+            "Incorrect password."
+        )
+
+
+# =========================================================
+# FOOTER
+# =========================================================
 
 st.divider()
-st.caption("Faculty can change the admin password in Streamlit secrets before deployment.")
+
+st.caption(
+    "Faculty can change the admin password in "
+    "Streamlit secrets before deployment."
+)
+
+st.caption(
+    "Each successful registration is recorded "
+    "with a timestamp in the Excel file."
+)
